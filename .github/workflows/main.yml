@@ -38,7 +38,8 @@ jobs:
       run: |
         flet build apk --verbose
 
-    # --- PASO DE SUBIDA CORREGIDO ---
+    # --- AQUÍ ESTÁ LA SOLUCIÓN ---
+    # Usamos comillas dobles y asteriscos para buscar la APK donde sea
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
