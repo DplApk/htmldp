@@ -38,8 +38,9 @@ jobs:
       run: |
         flet build apk --verbose
 
-        - name: Upload APK
+    # --- PASO DE SUBIDA CORREGIDO ---
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: App-Policial-Final
-        path: "**/*.apk"   # <--- ESTO ES LA CLAVE (Las comillas son importantes)
+        path: "**/*.apk"
