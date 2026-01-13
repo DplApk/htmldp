@@ -38,8 +38,8 @@ jobs:
       run: |
         flet build apk --verbose
 
-    # --- AQUÍ ESTÁ LA SOLUCIÓN ---
-    # Usamos comillas dobles y asteriscos para buscar la APK donde sea
+    # --- LA SOLUCIÓN: BÚSQUEDA AUTOMÁTICA ---
+    # Los asteriscos (**) buscan el archivo en cualquier carpeta
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
