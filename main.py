@@ -1,131 +1,120 @@
 import flet as ft
-from docxtpl import DocxTemplate
-import os
 import datetime
-import shutil
+import traceback # Para poder leer los errores
 
 def main(page: ft.Page):
-    # Configuración básica
-    page.title = "DocPol Mobile"
-    page.scroll = "adaptive"
+    # --- 1. CONFIGURACIÓN DE SEGURIDAD ---
+    # Ponemos fondo gris suave para saber si la app ha cargado (si ves gris, es que Python funciona)
+    page.bgcolor = "#f0f0f0"
+    page.theme_mode = "light"
+    page.scroll = "auto" # Scroll automático para evitar bloqueos
     page.padding = 20
-    page.theme_mode = "light" 
 
-    # Variable para guardar la ruta temporal del archivo generado
-    archivo_temporal = [""]
+    # Variable para el selector de archivos
+    file_picker = ft.FilePicker()
 
-    # --- MENSAJES ---
-    def mostrar_mensaje(mensaje, color):
-        page.snack_bar = ft.SnackBar(ft.Text(mensaje), bgcolor=color)
-        page.snack_bar.open = True
-        page.update()
+    # --- 2. EL "CAZADOR DE ERRORES" ---
+    # Envolvemos TODO en un Try/Except. Si falla, nos lo dirá.
+    try:
+        # Añadimos el selector al inicio
+        page.overlay.append(file_picker)
 
-    # --- GUARDADO ---
-    def guardar_archivo_final(e: ft.FilePickerResultEvent):
-        if e.path:
-            try:
-                # Copiamos el archivo temporal a la ruta que eligió el usuario
-                shutil.copy(archivo_temporal[0], e.path)
-                mostrar_mensaje(f"✅ Guardado en: {e.path}", "green")
-            except Exception as ex:
-                mostrar_mensaje(f"❌ Error al guardar: {str(ex)}", "red")
-        else:
-            mostrar_mensaje("⚠️ Guardado cancelado", "orange")
+        # --- LÓGICA DE GUARDADO ---
+        def guardar_archivo(e: ft.FilePickerResultEvent):
+            if e.path:
+                try:
+                    # Contenido HTML (Falso Word)
+                    html = f"""
+                    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
+                    <head><meta charset="utf-8"></head>
+                    <body style="font-family: Arial; padding: 20px;">
+                        <h2 style="text-align: center;">ATESTADO {txt_atestado.value}</h2>
+                        <p><b>Fecha:</b> {txt_fecha.value}</p>
+                        <p><b>Delito:</b> {dd_delito.value}</p>
+                        <hr>
+                        <h3>IDENTIFICADO</h3>
+                        <p><b>Nombre:</b> {txt_nombre.value}</p>
+                        <p><b>DNI:</b> {txt_dni.value}</p>
+                    </body>
+                    </html>
+                    """
+                    
+                    with open(e.path, "w", encoding="utf-8") as f:
+                        f.write(html)
+                    
+                    page.snack_bar = ft.SnackBar(ft.Text(f"✅ Guardado en: {e.path}"), bgcolor="green")
+                    page.snack_bar.open = True
+                    page.update()
+                except Exception as ex:
+                    page.snack_bar = ft.SnackBar(ft.Text(f"Error guardando: {ex}"), bgcolor="red")
+                    page.snack_bar.open = True
+                    page.update()
 
-    file_picker = ft.FilePicker(on_result=guardar_archivo_final)
-    page.overlay.append(file_picker)
+        # Conectar el guardado
+        file_picker.on_result = guardar_archivo
 
-    # --- LÓGICA ---
-    def generar_documento(e):
-        # CAMBIO IMPORTANTE: Ahora buscamos en la carpeta assets
-        ruta_plantilla = "assets/plantilla.docx"
+        def btn_click(e):
+            nombre = f"Atestado_{datetime.datetime.now().strftime('%H%M')}.doc"
+            file_picker.save_file(dialog_title="Guardar Word", file_name=nombre)
 
-        # Verificación extra por si acaso
-        if not os.path.exists(ruta_plantilla):
-            # A veces en Android la ruta assets es relativa directa
-            if os.path.exists("plantilla.docx"): 
-                 ruta_plantilla = "plantilla.docx"
-            else:
-                 # Si falla, intentamos una ruta segura pero avisamos
-                 mostrar_mensaje(f"❌ No encuentro 'assets/plantilla.docx'", "red")
-                 # (En Flet empaquetado, assets suele estar en la raiz de ejecución)
+        # --- CONTROLES (FORMULARIO) ---
+        titulo = ft.Text("DILIGENCIA POLICIAL", size=24, weight="bold", color="blue", text_align="center")
         
-        datos = {
-            "numero_atestado": txt_atestado.value,
-            "fecha": txt_fecha.value,
-            "nombre": txt_nombre.value,
-            "dni": txt_dni.value,
-            "delito": dd_delito.value
-        }
+        txt_atestado = ft.TextField(label="Nº Atestado", bgcolor="white")
+        txt_fecha = ft.TextField(label="Fecha", value=datetime.date.today().strftime("%d/%m/%Y"), bgcolor="white")
+        
+        dd_delito = ft.Dropdown(
+            label="Delito",
+            bgcolor="white",
+            options=[
+                ft.dropdown.Option("Seguridad Vial"),
+                ft.dropdown.Option("Robo"),
+                ft.dropdown.Option("Violencia Género"),
+            ]
+        )
+        
+        txt_dni = ft.TextField(label="DNI", bgcolor="white")
+        txt_nombre = ft.TextField(label="Nombre Completo", bgcolor="white")
+        
+        btn = ft.ElevatedButton(
+            "GENERAR DOCUMENTO", 
+            icon=ft.icons.SAVE, 
+            bgcolor="blue", 
+            color="white", 
+            height=50,
+            on_click=btn_click
+        )
 
-        try:
-            # Cargamos la plantilla
-            doc = DocxTemplate(ruta_plantilla)
-            doc.render(datos)
-            
-            timestamp = datetime.datetime.now().strftime("%H%M%S")
-            nombre_temp = f"Atestado_{timestamp}.docx"
-            
-            # Guardamos primero en la carpeta temporal de la app
-            doc.save(nombre_temp)
-            archivo_temporal[0] = nombre_temp
-            
-            # Abrimos el diálogo para que el usuario lo guarde en su móvil
-            file_picker.save_file(dialog_title="Guardar Atestado", file_name=nombre_temp)
-            
-        except Exception as ex:
-            mostrar_mensaje(f"Error generando: {str(ex)}", "red")
-
-    # --- CAMPOS ---
-    txt_atestado = ft.TextField(label="Nº Atestado", border="outline")
-    txt_fecha = ft.TextField(label="Fecha", value=datetime.date.today().strftime("%d/%m/%Y"), border="outline")
+        # --- 3. AÑADIR A PANTALLA (Uno a uno para asegurar) ---
+        page.add(
+            ft.Column([
+                titulo,
+                ft.Divider(),
+                txt_atestado,
+                txt_fecha,
+                dd_delito,
+                ft.Divider(),
+                txt_dni,
+                txt_nombre,
+                ft.Divider(),
+                btn,
+                ft.Text("Versión Segura v1.0", size=10, color="grey", text_align="center")
+            ])
+        )
     
-    dd_delito = ft.Dropdown(
-        label="Tipo de Delito",
-        border="outline",
-        options=[
-            ft.dropdown.Option("Robo con Fuerza"),
-            ft.dropdown.Option("Seguridad Vial"),
-            ft.dropdown.Option("Lesiones"),
-        ],
-    )
-
-    txt_dni = ft.TextField(label="DNI/NIE", border="outline")
-    txt_nombre = ft.TextField(label="Nombre Completo", border="outline")
-
-    # --- BOTÓN ---
-    btn_generar = ft.ElevatedButton(
-        text="GENERAR Y GUARDAR",
-        icon=ft.icons.SAVE,
-        bgcolor="blue",
-        color="white",
-        on_click=generar_documento
-    )
-
-    # --- PESTAÑAS ---
-    mis_tabs = ft.Tabs(
-        selected_index=0,
-        tabs=[
-            ft.Tab(
-                text="General",
-                icon=ft.icons.DASHBOARD,
-                content=ft.Column([
-                    ft.Text("Datos Generales", size=20, weight="bold"),
-                    txt_atestado, txt_fecha, dd_delito
-                ], spacing=20)
-            ),
-            ft.Tab(
-                text="Personas",
-                icon=ft.icons.PEOPLE,
-                content=ft.Column([
-                    ft.Text("Datos Personales", size=20, weight="bold"),
-                    txt_dni, txt_nombre, ft.Divider(), btn_generar
-                ], spacing=20)
-            ),
-        ],
-        expand=1,
-    )
-
-    page.add(mis_tabs)
+    except Exception as e:
+        # --- SI ALGO FALLA, ESTO SALDRÁ EN PANTALLA ROJA ---
+        page.bgcolor = "white"
+        page.add(
+            ft.Text("¡ERROR AL INICIAR!", color="red", size=30, weight="bold"),
+            ft.Text(f"Por favor, envía una foto de esto:", color="black"),
+            ft.Container(
+                content=ft.Text(traceback.format_exc(), color="red", size=12),
+                bgcolor="#ffebee",
+                padding=10,
+                border=ft.border.all(1, "red")
+            )
+        )
+        page.update()
 
 ft.app(target=main)
