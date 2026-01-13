@@ -38,10 +38,8 @@ jobs:
       run: |
         flet build apk --verbose
 
-    # --- AQUÍ ESTÁ EL CAMBIO IMPORTANTE ---
-    - name: Upload APK
+        - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: App-Policial-Final
-        # Usamos comodines (**) para encontrar la APK donde sea que se haya escondido
-        path: "**/*.apk"
+        path: "**/*.apk"   # <--- ESTO ES LA CLAVE (Las comillas son importantes)
