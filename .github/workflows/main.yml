@@ -1,0 +1,47 @@
+name: Build Modern Tablet APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Usamos Python 3.11 (El estándar moderno)
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.19.0'
+
+    - name: Build APK
+      run: |
+        # EL TRUCO: Quitamos el splash screen para evitar bloqueos
+        flet build apk --verbose --no-android-splash
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: App-Moderna
+        path: "**/*.apk"
