@@ -22,7 +22,6 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
-        # Ya no instalamos nada mas
 
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -39,8 +38,10 @@ jobs:
       run: |
         flet build apk --verbose
 
+    # --- AQUÍ ESTÁ EL CAMBIO IMPORTANTE ---
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: App-Policial-Final
-        path: build/app/outputs/flutter-apk/app-release.apk
+        # Usamos comodines (**) para encontrar la APK donde sea que se haya escondido
+        path: "**/*.apk"
